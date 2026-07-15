@@ -1,0 +1,15 @@
+# Gaming - DX12 via Vulkan/vkd3d-proton
+steam
+gamemode
+lib32-mesa
+lib32-vulkan-intel
+vulkan-intel
+vulkan-tools
+mesa
+wine
+wine-mono
+wine-gecko
+protonplus
+lutris
+mangohud
+vkd3d

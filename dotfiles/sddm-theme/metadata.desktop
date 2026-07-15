@@ -1,0 +1,8 @@
+[General]
+Type=Dark
+Name=Honor Hypr
+Comment=Catppuccin Mocha theme for SDDM
+MainScript=Main.qml
+
+[Wayland]
+EnableHiDPI=true

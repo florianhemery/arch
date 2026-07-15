@@ -1,0 +1,8 @@
+# Office and productivity
+firefox
+libreoffice-fresh
+thunderbird
+evince
+calculator
+gnome-calculator
+obsidian

@@ -1,0 +1,16 @@
+# Logs
+*.log
+/tmp/
+
+# Backups dotfiles
+*.bak
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Test artifacts
+tests/output/
+
+# Rapport machine généré (MACs, hostname) — régénéré par analyze-windows.ps1
+analyze/hardware-report.json

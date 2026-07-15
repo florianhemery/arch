@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-07-07T08:00:00.0000000Z",
+  "hostname": "MOCK-PC",
+  "system": {
+    "manufacturer": "HONOR",
+    "model": "HGE-WX6",
+    "firmware": "Uefi",
+    "biosVersion": "1.0.0"
+  },
+  "cpu": {
+    "name": "11th Gen Intel(R) Core(TM) i7-11390H @ 3.40GHz",
+    "cores": 4,
+    "threads": 8,
+    "architecture": "x86_64"
+  },
+  "memory": {
+    "totalBytes": 16952647680,
+    "totalGiB": 15.79
+  },
+  "gpu": [
+    {
+      "name": "Intel(R) Iris(R) Xe Graphics",
+      "adapterRamMiB": 2048,
+      "driverVersion": "32.0.101.7085",
+      "isDiscrete": false
+    }
+  ],
+  "storage": {
+    "disks": [
+      {
+        "diskNumber": 0,
+        "friendlyName": "WD_BLACK SN770 2TB",
+        "sizeBytes": 2000398934016,
+        "sizeGiB": 1863.02,
+        "partitionStyle": "GPT",
+        "unallocatedBytes": 337222451200,
+        "unallocatedGiB": 314.0,
+        "partitions": []
+      }
+    ]
+  },
+  "display": {
+    "primary": {
+      "deviceName": "\\\\.\\DISPLAY1",
+      "primary": true,
+      "width": 2520,
+      "height": 1680,
+      "logicalWidth": 1680,
+      "logicalHeight": 1120,
+      "refreshHz": 60,
+      "scale": 1.5
+    },
+    "all": [
+      {
+        "deviceName": "\\\\.\\DISPLAY1",
+        "primary": true,
+        "width": 2520,
+        "height": 1680,
+        "logicalWidth": 1680,
+        "logicalHeight": 1120,
+        "refreshHz": 60,
+        "scale": 1.5
+      }
+    ]
+  },
+  "network": {
+    "adapters": []
+  },
+  "pnpDevices": [],
+  "keyboard": {
+    "layoutTag": "fr-FR",
+    "culture": "fr-FR"
+  },
+  "locale": {
+    "timezone": "Romance Standard Time",
+    "language": "fr-FR"
+  },
+  "security": {
+    "bitlocker": {
+      "enabled": false,
+      "status": "Off",
+      "mustSuspend": false
+    }
+  },
+  "install": {
+    "canInstall": true,
+    "reason": "Espace libre détecté",
+    "targetDisk": 0,
+    "suggestedRootGiB": 250,
+    "useExistingEfi": true
+  },
+  "profiles": {
+    "dev": true,
+    "gaming": true,
+    "office": true,
+    "video": true,
+    "hyprland": true
+  }
+}

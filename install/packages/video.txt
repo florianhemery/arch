@@ -1,0 +1,13 @@
+# Video creation
+obs-studio
+kdenlive
+ffmpeg
+ffmpegthumbnailer
+handbrake
+gimp
+inkscape
+audacity
+davinci-resolve
+intel-media-driver
+libva-intel-driver
+vainfo

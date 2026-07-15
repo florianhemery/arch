@@ -1,0 +1,21 @@
+# Development tools
+code
+docker
+docker-compose
+nodejs
+npm
+python
+python-pip
+rust
+go
+gcc
+make
+cmake
+jq
+yq
+github-cli
+lazygit
+neovim
+tmux
+postgresql-libs
+sqlite
