@@ -30,6 +30,22 @@ setup() {
   [[ "$output" == *"Installation terminée"* ]]
 }
 
+@test "arch-setup live dry-run completes without --disk (auto-detect path)" {
+  # Régression : "local disk" sans valeur explicite dans cmd_live ne protège
+  # pas contre set -u dans ce chemin (auto-détection), contrairement au
+  # chemin --disk qui assigne disk avant tout test -z. Jamais couvert avant
+  # car tous les autres tests passent --disk explicitement.
+  export DRY_RUN=1
+  run bash "$ARCH_PROJECT_ROOT/arch-setup" live \
+    --dry-run \
+    --user archuser \
+    --password test \
+    --report "$ARCH_PROJECT_ROOT/tests/fixtures/hardware-report.json"
+  [[ $status -eq 0 ]]
+  [[ "$output" != *"unbound variable"* ]]
+  [[ "$output" == *"Installation terminée"* ]]
+}
+
 @test "configure/first-boot.sh delegates to arch-setup" {
   grep -q 'arch-setup.*first-boot' "$ARCH_PROJECT_ROOT/configure/first-boot.sh"
 }

@@ -114,7 +114,7 @@ cmd_find() {
 }
 
 cmd_live() {
-  local root report disk user password root_gib extra_args=() dry=0
+  local root="" report="" disk="" user="" password="" root_gib="" extra_args=() dry=0
 
   while [[ $# -gt 0 ]]; do
     case "$1" in

@@ -332,7 +332,11 @@ function New-HardwareReport {
         $gpus = @(@{ name = 'Unknown'; adapterRamMiB = $null; driverVersion = ''; isDiscrete = $false })
     }
     $firmware = (Get-ComputerInfo -Property BiosFirmwareType).BiosFirmwareType
-    $diskLayout = Get-DiskLayout
+    # @() force le contexte tableau : PowerShell "déballe" automatiquement un
+    # tableau à un seul élément en scalaire quand une fonction le retourne via
+    # le pipeline (cas du disque unique, le plus courant) — sans ça, storage.disks
+    # devient un objet JSON au lieu d'un tableau, invalide selon le schéma.
+    $diskLayout = @(Get-DiskLayout)
     $installRec = Get-InstallRecommendation -DiskLayout $diskLayout
     $primaryDisplay = (Get-DisplayInfo | Where-Object { $_.primary } | Select-Object -First 1)
     if (-not $primaryDisplay) { $primaryDisplay = (Get-DisplayInfo | Select-Object -First 1) }
@@ -359,7 +363,7 @@ function New-HardwareReport {
         }
         gpu = @($gpus)
         storage = @{
-            disks = $diskLayout
+            disks = @($diskLayout)
         }
         display = @{
             primary = $primaryDisplay
