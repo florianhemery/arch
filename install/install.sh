@@ -58,10 +58,14 @@ detect_target_disk() {
   fi
   local disk_num
   disk_num=$(json_get 'install.targetDisk' "$HARDWARE_REPORT" 2>/dev/null || echo "")
+  # RM=="0" exclut les médias amovibles (la clé USB de boot elle-même
+  # apparaît comme "disk" dans lsblk) ; TYPE=="disk" exclut les loop
+  # devices internes à l'ISO live. Sans ces deux filtres, targetDisk=0 peut
+  # désigner la clé USB au lieu du disque interne.
   if [[ -n "$disk_num" && "$disk_num" != "null" ]]; then
-    lsblk -dno NAME | sed -n "$((disk_num + 1))p" 2>/dev/null || lsblk -dno NAME | head -1
+    lsblk -dno NAME,TYPE,RM | awk -v n="$disk_num" '$2=="disk" && $3==0 { d[c++]=$1 } END { print (n+0<c) ? d[n+0] : d[0] }'
   else
-    lsblk -dno NAME,TYPE | awk '$2=="disk" {print $1; exit}'
+    lsblk -dno NAME,TYPE,RM | awk '$2=="disk" && $3==0 {print $1; exit}'
   fi
 }
 

@@ -378,9 +378,9 @@ function Invoke-CopyUsbStep {
     Write-Step 'Sur l''ISO Arch (root)'
     @'
 
-  mkdir -p /mnt/usb
-  mount /dev/sdX1 /mnt/usb
-  cd /mnt/usb/arch
+  mkdir -p /root/usb
+  mount /dev/sdX1 /root/usb
+  cd /root/usb/arch
   chmod +x arch-setup
   ./arch-setup live
 

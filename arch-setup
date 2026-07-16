@@ -25,21 +25,26 @@ find_project_root() {
     echo "$ARCH_SETUP_BIN"
     return 0
   fi
-  for dir in "$ARCH_SETUP_BIN" /mnt/usb/arch /mnt/arch; do
+  for dir in "$ARCH_SETUP_BIN" /root/usb/arch /root/usb; do
     [[ -f "$dir/install/install.sh" ]] && { echo "$dir"; return 0; }
   done
+  # /run/media seulement, jamais /mnt : install.sh monte le système cible
+  # directement sur /mnt, ce qui masquerait (VFS shadowing) tout ce qui
+  # était monté en dessous — y compris la clé USB contenant ce projet —
+  # pile au moment où run_pacstrap a besoin de lire les listes de paquets.
   while IFS= read -r mp; do
     for sub in "$mp/arch" "$mp"; do
       [[ -f "$sub/install/install.sh" ]] && { echo "$sub"; return 0; }
     done
-  done < <(find /mnt /run/media -maxdepth 3 -type d 2>/dev/null | sort -u)
+  done < <(find /run/media -maxdepth 3 -type d 2>/dev/null | sort -u)
+  local usb_mnt=/run/arch-setup-usb
   while read -r name fstype _; do
     [[ "$fstype" =~ ^(vfat|exfat|ntfs)$ ]] || continue
     [[ -b "/dev/$name" ]] || continue
-    mountpoint -q "/mnt/$name" 2>/dev/null && continue
-    mkdir -p "/mnt/$name"
-    mount -o ro "/dev/$name" "/mnt/$name" 2>/dev/null || mount "/dev/$name" "/mnt/$name" 2>/dev/null || continue
-    for sub in "/mnt/$name/arch" "/mnt/$name"; do
+    mountpoint -q "$usb_mnt/$name" 2>/dev/null && continue
+    mkdir -p "$usb_mnt/$name"
+    mount -o ro "/dev/$name" "$usb_mnt/$name" 2>/dev/null || mount "/dev/$name" "$usb_mnt/$name" 2>/dev/null || continue
+    for sub in "$usb_mnt/$name/arch" "$usb_mnt/$name"; do
       if [[ -f "$sub/install/install.sh" ]]; then
         echo "$sub"
         return 0
@@ -148,13 +153,19 @@ cmd_live() {
     disk="${DISK:-}"
   fi
   if [[ -z "$disk" ]]; then
+    # TYPE=="disk" seul ne suffit pas : la clé USB de boot elle-même
+    # apparaît aussi comme "disk" dans lsblk (tout comme les loop devices
+    # internes à l'ISO live, exclus par le filtre TYPE). RM=="0" exclut les
+    # médias amovibles — sans ça, le disque cible auto-détecté peut être la
+    # clé USB elle-même plutôt que le disque interne.
     disk=$(python3 -c "
-import json
+import json, subprocess
 d=json.load(open('$report',encoding='utf-8-sig'))
 n=d.get('install',{}).get('targetDisk',0)
-disks=__import__('subprocess').check_output(['lsblk','-dno','NAME'],text=True).strip().split('\n')
+out=subprocess.check_output(['lsblk','-dno','NAME,TYPE,RM'],text=True).strip().split('\n')
+disks=[l.split()[0] for l in out if len(l.split())>=3 and l.split()[1]=='disk' and l.split()[2]=='0']
 print(disks[n] if n is not None and n < len(disks) else disks[0])
-" 2>/dev/null || lsblk -dno NAME | head -1)
+" 2>/dev/null || lsblk -dno NAME,TYPE,RM | awk '$2=="disk" && $3==0 {print $1; exit}')
     log "Disque auto-détecté: /dev/$disk"
     extra_args+=(--disk "$disk")
   fi

@@ -55,7 +55,7 @@ cd C:\Users\flofl\Documents\arch
 ### Sur l'ISO Arch live (root)
 
 ```bash
-cd /mnt/usb/arch          # adaptez le chemin
+cd /root/usb/arch          # adaptez le chemin (jamais sous /mnt : install.sh y monte le disque cible)
 chmod +x arch-setup
 ./arch-setup live
 ```
@@ -104,11 +104,13 @@ Génère `analyze\hardware-report.json` avec l'inventaire complet, dont :
 
 1. Démarrer sur la clé USB Arch
 2. Connecter au réseau : `iwctl` ou `dhcpcd`
-3. Monter le support contenant ce projet (ex: `/mnt/usb`)
+3. Monter le support contenant ce projet **hors de `/mnt`** (ex: `/root/usb`) —
+   install.sh monte le disque cible sur `/mnt`, ce qui masquerait le projet
+   s'il y était monté
 4. Lancer l'installation :
 
 ```bash
-cd /mnt/usb/arch
+cd /root/usb/arch
 chmod +x install/install.sh configure/setup.sh configure/verify-dx12.sh dotfiles/deploy.sh
 ./install/install.sh --report analyze/hardware-report.json
 ```
