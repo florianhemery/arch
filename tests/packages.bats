@@ -23,6 +23,7 @@ setup() {
   [[ $status -eq 0 ]]
   [[ "$output" == *"vulkan-intel"* ]]
   [[ "$output" == *"steam"* ]]
+  [[ "$output" != *"protonplus"* ]]
 }
 
 @test "read_package_list loads hyprland packages" {
@@ -30,6 +31,16 @@ setup() {
   [[ $status -eq 0 ]]
   [[ "$output" == *"hyprland"* ]]
   [[ "$output" == *"sddm"* ]]
+  [[ "$output" == *"wlogout"* ]]
+  [[ "$output" != *"bibata-cursor-theme"* ]]
+}
+
+@test "read_aur_package_list loads AUR-only packages" {
+  run read_aur_package_list
+  [[ $status -eq 0 ]]
+  [[ "$output" == *"protonplus"* ]]
+  [[ "$output" == *"bibata-cursor-theme"* ]]
+  [[ "$output" == *"davinci-resolve"* ]]
 }
 
 @test "merge_package_lists deduplicates" {
@@ -51,4 +62,12 @@ setup() {
   run run_pacstrap /mnt base
   [[ $status -eq 0 ]]
   [[ "$output" == *"DRY-RUN"* ]] || [[ "$output" == *"Pacstrap"* ]]
+}
+
+@test "official package names resolve via pacman -Sp" {
+  if ! command -v pacman &>/dev/null; then
+    skip "pacman not available"
+  fi
+  run validate_official_packages
+  [[ $status -eq 0 ]]
 }

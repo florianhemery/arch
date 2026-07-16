@@ -60,6 +60,111 @@
         }
       }
     },
+    "storage": {
+      "type": "object",
+      "required": ["disks"],
+      "properties": {
+        "disks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["diskNumber", "sizeBytes", "sizeGiB", "partitionStyle"],
+            "properties": {
+              "diskNumber": { "type": "integer", "minimum": 0 },
+              "friendlyName": { "type": "string" },
+              "sizeBytes": { "type": "integer", "minimum": 1 },
+              "sizeGiB": { "type": "number", "minimum": 0 },
+              "partitionStyle": { "type": "string" },
+              "unallocatedBytes": { "type": "integer", "minimum": 0 },
+              "unallocatedGiB": { "type": "number", "minimum": 0 },
+              "partitions": { "type": "array" }
+            }
+          }
+        }
+      }
+    },
+    "display": {
+      "type": "object",
+      "required": ["primary"],
+      "properties": {
+        "primary": {
+          "type": "object",
+          "required": ["width", "height"],
+          "properties": {
+            "deviceName": { "type": "string" },
+            "primary": { "type": "boolean" },
+            "width": { "type": "integer", "minimum": 1 },
+            "height": { "type": "integer", "minimum": 1 },
+            "logicalWidth": { "type": "integer", "minimum": 1 },
+            "logicalHeight": { "type": "integer", "minimum": 1 },
+            "refreshHz": { "type": "number", "minimum": 1 },
+            "scale": { "type": "number", "minimum": 0.5 }
+          }
+        },
+        "all": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "deviceName": { "type": "string" },
+              "primary": { "type": "boolean" },
+              "width": { "type": "integer", "minimum": 1 },
+              "height": { "type": "integer", "minimum": 1 },
+              "logicalWidth": { "type": "integer", "minimum": 1 },
+              "logicalHeight": { "type": "integer", "minimum": 1 },
+              "refreshHz": { "type": "number", "minimum": 1 },
+              "scale": { "type": "number", "minimum": 0.5 }
+            }
+          }
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "properties": {
+        "adapters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "description": { "type": "string" },
+              "macAddress": { "type": "string" },
+              "status": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "pnpDevices": { "type": "array" },
+    "keyboard": {
+      "type": "object",
+      "properties": {
+        "layoutTag": { "type": "string" },
+        "culture": { "type": "string" }
+      }
+    },
+    "locale": {
+      "type": "object",
+      "properties": {
+        "timezone": { "type": "string" },
+        "language": { "type": "string" }
+      }
+    },
+    "security": {
+      "type": "object",
+      "properties": {
+        "bitlocker": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "status": { "type": "string" },
+            "mustSuspend": { "type": "boolean" },
+            "checkedAsAdmin": { "type": "boolean" }
+          }
+        }
+      }
+    },
     "install": {
       "type": "object",
       "required": ["canInstall"],

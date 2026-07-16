@@ -78,12 +78,28 @@ assert_eq "json_get targetDisk" "0" "$(json_get install.targetDisk "$HARDWARE_RE
 # packages.sh
 assert_contains "base packages has linux" "linux" "$(read_package_list base)"
 assert_contains "gaming has vulkan-intel" "vulkan-intel" "$(read_package_list gaming)"
+assert_contains "hyprland has wlogout" "wlogout" "$(read_package_list hyprland)"
 assert_contains "hyprland has sddm" "sddm" "$(read_package_list hyprland)"
+assert_contains "aur has protonplus" "protonplus" "$(read_aur_package_list)"
 assert_contains "profiles include gaming" "gaming" "$(get_profiles_from_report "$HARDWARE_REPORT")"
 
-# disk.sh
-result=$(gib_to_bytes 250)
-if (( result > 200000000000 )); then pass "gib_to_bytes 250"; else fail "gib_to_bytes 250"; fi
+# disk.sh — region too small
+export MOCK_UNALLOCATED_REGION="2048:106496"
+output=$(calculate_partition_layout mockdisk 250 2>&1) || true
+if [[ "$output" == *region_too_small* ]]; then
+  pass "disk rejects small unallocated region"
+else
+  fail "disk rejects small unallocated region (got: $output)"
+fi
+unset MOCK_UNALLOCATED_REGION
+export MOCK_UNALLOCATED_REGION="2048:419430400"
+output=$(calculate_partition_layout mockdisk 250 2>&1) || true
+if [[ "$output" == *":"* && "$output" != *region_too_small* ]]; then
+  pass "disk accepts large unallocated region"
+else
+  fail "disk accepts large unallocated region (got: $output)"
+fi
+unset MOCK_UNALLOCATED_REGION
 
 # bootloader/users dry-run
 assert_success "configure_locale_chroot dry-run" configure_locale_chroot /mnt Europe/Paris fr
@@ -99,9 +115,28 @@ assert_success "swaync json valid" python3 -m json.tool "$ARCH_PROJECT_ROOT/dotf
 # integration dry-run
 output=$(bash "$ARCH_PROJECT_ROOT/install/install.sh" --dry-run --disk nvme0n1 --user archuser --password test --report "$HARDWARE_REPORT" 2>&1)
 assert_contains "install dry-run complete" "Installation terminée" "$output"
+assert_contains "install dry-run mentions first-boot" "first-boot" "$output"
+
+output=$(bash "$ARCH_PROJECT_ROOT/arch-setup" live --dry-run --disk nvme0n1 --user archuser --password test --report "$HARDWARE_REPORT" 2>&1)
+assert_contains "arch-setup live dry-run" "Installation terminée" "$output"
 
 output=$(bash "$ARCH_PROJECT_ROOT/configure/setup.sh" --dry-run 2>&1)
 assert_contains "setup dry-run complete" "Configuration terminée" "$output"
+
+output=$(bash "$ARCH_PROJECT_ROOT/configure/verify-dx12.sh" 2>&1) || true
+assert_contains "verify-dx12 completes" "Résultat:" "$output"
+
+# jsonschema validation
+if python3 -c "import jsonschema" 2>/dev/null; then
+  assert_success "fixture validates against schema" python3 -c "
+import json, jsonschema
+schema = json.load(open('$ARCH_PROJECT_ROOT/analyze/hardware-report.schema.json'))
+report = json.load(open('$HARDWARE_REPORT', encoding='utf-8-sig'))
+jsonschema.validate(report, schema)
+"
+else
+  skip "jsonschema python module unavailable"
+fi
 
 output=$(bash "$ARCH_PROJECT_ROOT/dotfiles/deploy.sh" --dry-run 2>&1)
 assert_contains "deploy dry-run complete" "Déploiement terminé" "$output"

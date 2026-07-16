@@ -40,16 +40,20 @@ create_user() {
     log_info "[DRY-RUN] useradd $username wheel video audio input"
     return 0
   fi
-  arch-chroot "$target" useradd -m -G wheel,video,audio,input,storage,power -s /bin/bash "$username" 2>/dev/null || true
+  arch-chroot "$target" useradd -m -G wheel,video,audio,input,storage,power -s /bin/zsh "$username" 2>/dev/null || true
   if [[ -n "$password" ]]; then
     echo "$username:$password" | arch-chroot "$target" chpasswd
   fi
   sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' "$target/etc/sudoers"
+  if ! visudo -cf "$target/etc/sudoers" &>/dev/null; then
+    log_error "sudoers invalide après modification"
+    return 1
+  fi
 }
 
 enable_services_chroot() {
   local target="${1:-/mnt}"
-  local services=(NetworkManager bluetooth sddm pipewire pipewire-pulse wireplumber)
+  local services=(NetworkManager bluetooth sddm pipewire pipewire-pulse wireplumber reflector.timer)
   if is_dry_run; then
     log_info "[DRY-RUN] enable services: ${services[*]}"
     return 0

@@ -35,6 +35,52 @@ arch/
 2. **Sauvegarder** vos données importantes
 3. Créer une **clé USB Arch Linux** (≥ 2 Go)
 
+## Installation rapide (utilitaire automatisé)
+
+### Sous Windows
+
+```powershell
+cd C:\Users\flofl\Documents\arch
+
+# 1. Analyse + validation (PowerShell admin recommandé)
+.\arch-setup.ps1 prepare
+
+# 2. Copier le projet sur la clé USB (lettre E: par exemple)
+.\arch-setup.ps1 copy-usb -DriveLetter E
+
+# Ou tout en une commande :
+.\arch-setup.ps1 all -DriveLetter E
+```
+
+### Sur l'ISO Arch live (root)
+
+```bash
+cd /mnt/usb/arch          # adaptez le chemin
+chmod +x arch-setup
+./arch-setup live
+```
+
+Le script détecte le projet, vérifie le réseau, valide BitLocker/canInstall, puis lance `install.sh`.
+
+Wi-Fi automatique (optionnel) :
+```bash
+export WIFI_SSID="MonWiFi"
+export WIFI_PASS="motdepasse"
+./arch-setup live
+```
+
+### Premier boot Arch
+
+```bash
+~/arch-setup/arch-setup first-boot
+```
+
+Enchaîne automatiquement : `setup.sh` → `deploy.sh` → `verify-dx12.sh`.
+
+---
+
+## Installation manuelle (étapes détaillées)
+
 ## Étape 1 — Analyser le PC (Windows)
 
 Lancer dans un **PowerShell administrateur** (nécessaire pour lire le statut BitLocker) :

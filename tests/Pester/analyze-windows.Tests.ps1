@@ -1,6 +1,20 @@
 ﻿$scriptRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $analyzeScript = Join-Path $scriptRoot 'analyze\analyze-windows.ps1'
 
+function Get-WorkingPython {
+    foreach ($name in @('python3', 'python')) {
+        $cmd = Get-Command $name -ErrorAction SilentlyContinue
+        if (-not $cmd) { continue }
+        if ($cmd.Source -like '*WindowsApps*') { continue }
+        try {
+            & $cmd.Source -c 'import sys' 2>$null | Out-Null
+            if ($LASTEXITCODE -eq 0) { return $cmd }
+        }
+        catch { continue }
+    }
+    return $null
+}
+
 Describe 'analyze-windows.ps1' {
     BeforeAll {
         . $analyzeScript
@@ -34,6 +48,29 @@ Describe 'analyze-windows.ps1' {
         It 'validates a complete report' {
             $report = New-MockHardwareReport
             { Test-HardwareReportSchema -Report $report } | Should Not Throw
+        }
+
+        It 'validates fixture against JSON schema file' {
+            $schemaPath = Join-Path $scriptRoot 'analyze\hardware-report.schema.json'
+            $fixturePath = Join-Path $scriptRoot 'tests\fixtures\hardware-report.json'
+            $python = Get-WorkingPython
+            if (-not $python) {
+                Write-Warning 'Python non disponible sur cet hôte — test ignoré'
+                return
+            }
+            & $python.Source -c 'import jsonschema' 2>$null | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning 'Module jsonschema non installé — test ignoré'
+                return
+            }
+            $code = @"
+import json, jsonschema
+schema = json.load(open(r'$schemaPath', encoding='utf-8'))
+report = json.load(open(r'$fixturePath', encoding='utf-8-sig'))
+jsonschema.validate(report, schema)
+"@
+            & $python.Source -c $code
+            $LASTEXITCODE | Should Be 0
         }
 
         It 'rejects report missing schemaVersion' {

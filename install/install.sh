@@ -97,9 +97,18 @@ main() {
   root_gib="${ROOT_GIB:-$(json_get 'install.suggestedRootGiB' "$HARDWARE_REPORT" 2>/dev/null || echo 250)}"
   export BOOTLOADER="${BOOTLOADER:-grub}"
 
+  if [[ "$BOOTLOADER" == "systemd-boot" ]]; then
+    log_error "systemd-boot non supporté : le noyau est sur btrfs (/boot), pas sur l'ESP Windows."
+    log_error "L'ESP existante (~200 Mo) est montée sur /boot/efi ; systemd-boot ne peut pas lire le btrfs."
+    log_error "Utilisez --bootloader grub (défaut)."
+    exit 1
+  fi
+
   log_info "=== Installation Arch Linux ==="
   log_info "Disque: /dev/$disk | Root: ${root_gib} GiB | Bootloader: $BOOTLOADER"
   log_info "DRY_RUN=$DRY_RUN"
+
+  refresh_mirrors_live
 
   local part_dev
   part_dev=$(partition_disk "$disk" "$root_gib")
@@ -107,6 +116,9 @@ main() {
 
   mapfile -t profiles < <(get_profiles_from_report)
   run_pacstrap /mnt "${profiles[@]}"
+
+  enable_multilib_chroot /mnt
+  configure_zram_chroot /mnt
 
   generate_fstab /mnt
   configure_locale_chroot /mnt "$(json_get 'locale.timezone' "$HARDWARE_REPORT" 2>/dev/null | tr ' ' '_' || echo 'Europe/Paris')" "fr"
@@ -121,17 +133,23 @@ main() {
 
   # Copy project for post-install configuration
   if ! is_dry_run; then
-    mkdir -p "/mnt/home/$DEFAULT_USER/arch-setup"
+    mkdir -p "/mnt/home/$DEFAULT_USER/arch-setup/analyze"
     cp -r "$ARCH_PROJECT_ROOT/configure" "$ARCH_PROJECT_ROOT/dotfiles" "/mnt/home/$DEFAULT_USER/arch-setup/"
+    cp "$ARCH_PROJECT_ROOT/arch-setup" "/mnt/home/$DEFAULT_USER/arch-setup/"
+    chmod +x "/mnt/home/$DEFAULT_USER/arch-setup/arch-setup"
+    cp "$HARDWARE_REPORT" "/mnt/home/$DEFAULT_USER/arch-setup/analyze/hardware-report.json"
+    mkdir -p "/mnt/home/$DEFAULT_USER/arch-setup/packages"
+    cp -r "$ARCH_PROJECT_ROOT/install/packages/" "/mnt/home/$DEFAULT_USER/arch-setup/packages/"
     chown -R "$DEFAULT_USER:$DEFAULT_USER" "/mnt/home/$DEFAULT_USER/arch-setup"
   else
-    log_info "[DRY-RUN] Copie configure/ et dotfiles/ vers /mnt/home/$DEFAULT_USER/arch-setup"
+    log_info "[DRY-RUN] Copie arch-setup, configure/, dotfiles/, packages/ et hardware-report.json"
   fi
 
   log_info "=== Installation terminée ==="
-  if ! is_dry_run; then
-    log_info "Redémarrez, puis exécutez: ~/arch-setup/configure/setup.sh"
-    log_info "Puis: ~/arch-setup/dotfiles/deploy.sh"
+  if is_dry_run; then
+    log_info "[DRY-RUN] Après reboot : ~/arch-setup/arch-setup first-boot"
+  else
+    log_info "Redémarrez, connectez-vous, puis : ~/arch-setup/arch-setup first-boot"
   fi
 }
 

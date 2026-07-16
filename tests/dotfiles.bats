@@ -10,6 +10,26 @@ setup() {
   [[ -f "$DOTFILES_DIR/hypr/hyprland.conf" ]]
   grep -q "bind = SUPER, Return" "$DOTFILES_DIR/hypr/hyprland.conf"
   grep -q "exec-once = waybar" "$DOTFILES_DIR/hypr/hyprland.conf"
+  grep -q "exec-once = hypridle" "$DOTFILES_DIR/hypr/hyprland.conf"
+}
+
+@test "embedded wallpaper exists" {
+  [[ -f "$DOTFILES_DIR/hypr/wallpaper.jpg" ]]
+}
+
+@test "hypridle.conf exists" {
+  [[ -f "$DOTFILES_DIR/hypr/hypridle.conf" ]]
+  grep -q "lock-session" "$DOTFILES_DIR/hypr/hypridle.conf"
+}
+
+@test "wlogout config exists" {
+  [[ -f "$DOTFILES_DIR/wlogout/layout" ]]
+  [[ -f "$DOTFILES_DIR/wlogout/style.css" ]]
+}
+
+@test "zsh dotfiles exist" {
+  [[ -f "$DOTFILES_DIR/zsh/.zshrc" ]]
+  [[ -f "$DOTFILES_DIR/zsh/starship.toml" ]]
 }
 
 @test "waybar config.json is valid JSON" {

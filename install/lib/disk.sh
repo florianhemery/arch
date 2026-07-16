@@ -7,14 +7,25 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
 source "$SCRIPT_DIR/common.sh"
 
+MIN_ROOT_GIB=50
+
 find_unallocated_region() {
   local disk="$1"
+  if [[ -n "${MOCK_UNALLOCATED_REGION:-}" ]]; then
+    echo "$MOCK_UNALLOCATED_REGION"
+    return 0
+  fi
   if is_dry_run; then
     echo "2048:419430400"
     return 0
   fi
   parted -ms "/dev/$disk" unit s print free 2>/dev/null | \
-    awk -F: '/^free/ {gsub(/s/,"",$2); gsub(/s/,"",$3); print $2":"$3; exit}'
+    awk -F: '/^free/ {
+      gsub(/s/,"",$2); gsub(/s/,"",$3);
+      size = $3 - $2;
+      if (size > max) { max = size; best = $2":"$3 }
+    }
+    END { if (best != "") print best }'
 }
 
 find_efi_partition() {
@@ -40,6 +51,12 @@ calculate_partition_layout() {
   start="${region%%:*}"
   end="${region##*:}"
   local region_bytes=$(( (end - start) * 512 ))
+  local min_bytes
+  min_bytes=$(gib_to_bytes "$MIN_ROOT_GIB")
+  if (( region_bytes < min_bytes )); then
+    echo "ERROR:region_too_small"
+    return 1
+  fi
   local root_bytes
   root_bytes=$(gib_to_bytes "$root_gib")
   if (( root_bytes > region_bytes )); then

@@ -1,0 +1,100 @@
+{
+  "schemaVersion": "1.0.0",
+  "generatedAt": "2026-07-16T08:00:00.0000000Z",
+  "hostname": "VMTEST-PC",
+  "system": {
+    "manufacturer": "QEMU",
+    "model": "Standard PC (Q35)",
+    "firmware": "Uefi",
+    "biosVersion": "OVMF"
+  },
+  "cpu": {
+    "name": "QEMU Virtual CPU",
+    "cores": 4,
+    "threads": 4,
+    "architecture": "x86_64"
+  },
+  "memory": {
+    "totalBytes": 6442450944,
+    "totalGiB": 6.0
+  },
+  "gpu": [
+    {
+      "name": "QXL virtual GPU",
+      "adapterRamMiB": 64,
+      "driverVersion": "0.0.0",
+      "isDiscrete": false
+    }
+  ],
+  "storage": {
+    "disks": [
+      {
+        "diskNumber": 0,
+        "friendlyName": "QEMU HARDDISK",
+        "sizeBytes": 128849018880,
+        "sizeGiB": 120.0,
+        "partitionStyle": "GPT",
+        "unallocatedBytes": 84822605824,
+        "unallocatedGiB": 79.0,
+        "partitions": []
+      }
+    ]
+  },
+  "display": {
+    "primary": {
+      "deviceName": "\\\\.\\DISPLAY1",
+      "primary": true,
+      "width": 1920,
+      "height": 1080,
+      "logicalWidth": 1920,
+      "logicalHeight": 1080,
+      "refreshHz": 60,
+      "scale": 1.0
+    },
+    "all": [
+      {
+        "deviceName": "\\\\.\\DISPLAY1",
+        "primary": true,
+        "width": 1920,
+        "height": 1080,
+        "logicalWidth": 1920,
+        "logicalHeight": 1080,
+        "refreshHz": 60,
+        "scale": 1.0
+      }
+    ]
+  },
+  "network": {
+    "adapters": []
+  },
+  "pnpDevices": [],
+  "keyboard": {
+    "layoutTag": "fr-FR",
+    "culture": "fr-FR"
+  },
+  "locale": {
+    "timezone": "Romance Standard Time",
+    "language": "fr-FR"
+  },
+  "security": {
+    "bitlocker": {
+      "enabled": false,
+      "status": "Off",
+      "mustSuspend": false
+    }
+  },
+  "install": {
+    "canInstall": true,
+    "reason": "Espace libre détecté (test VM)",
+    "targetDisk": 0,
+    "suggestedRootGiB": 60,
+    "useExistingEfi": true
+  },
+  "profiles": {
+    "dev": false,
+    "gaming": false,
+    "office": false,
+    "video": false,
+    "hyprland": true
+  }
+}

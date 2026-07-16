@@ -44,6 +44,20 @@ function Invoke-TestStep {
     }
 }
 
+function Get-WorkingPython {
+    foreach ($name in @('python3', 'python')) {
+        $cmd = Get-Command $name -ErrorAction SilentlyContinue
+        if (-not $cmd) { continue }
+        if ($cmd.Source -like '*WindowsApps*') { continue }
+        try {
+            & $cmd.Source -c 'import sys' 2>$null | Out-Null
+            if ($LASTEXITCODE -eq 0) { return $cmd }
+        }
+        catch { continue }
+    }
+    return $null
+}
+
 # --- 1. Génération rapport matériel (DryRun) ---
 Write-TestHeader "Phase 1 - Analyse matérielle"
 Invoke-TestStep "Génération hardware-report.json (DryRun)" {
@@ -79,6 +93,27 @@ Invoke-TestStep "swaync/config.json JSON valide" {
 Invoke-TestStep "hardware-report.schema.json JSON valide" {
     Get-Content (Join-Path $ProjectRoot 'analyze\hardware-report.schema.json') -Raw | ConvertFrom-Json | Out-Null
 }
+Invoke-TestStep "fixture hardware-report conforme au schéma" {
+    $schemaPath = Join-Path $ProjectRoot 'analyze\hardware-report.schema.json'
+    $fixturePath = Join-Path $ProjectRoot 'tests\fixtures\hardware-report.json'
+    $python = Get-WorkingPython
+    if (-not $python) {
+        Write-Host "Python indisponible, validation jsonschema ignorée (couvert par WSL/Docker)" -ForegroundColor DarkYellow
+        return
+    }
+    & $python.Source -c 'import jsonschema' 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Module jsonschema absent, validation ignorée (couvert par WSL/Docker)" -ForegroundColor DarkYellow
+        return
+    }
+    & $python.Source -c @"
+import json, jsonschema
+schema = json.load(open(r'$schemaPath', encoding='utf-8'))
+report = json.load(open(r'$fixturePath', encoding='utf-8-sig'))
+jsonschema.validate(report, schema)
+"@
+    if ($LASTEXITCODE -ne 0) { throw "Fixture non conforme au schéma JSON" }
+}
 
 # --- 4. Tests Bash (Docker, WSL, ou runner portable) ---
 Write-TestHeader "Tests Bash"
@@ -90,7 +125,7 @@ Invoke-TestStep "Tests bash (shellcheck + assertions)" {
         try {
             docker info 2>&1 | Out-Null
             if ($LASTEXITCODE -eq 0) {
-                $dockerCmd = "pacman -Sy --noconfirm shellcheck bats python jq 2>/dev/null; cd /project && find install configure dotfiles -name '*.sh' -print0 | xargs -0 shellcheck -e SC1091,SC2034 && bats tests/*.bats"
+                $dockerCmd = "pacman -Sy --noconfirm shellcheck bats python jq python-jsonschema 2>/dev/null; pacman -Sy --noconfirm 2>/dev/null; cd /project && find install configure dotfiles -name '*.sh' -print0 | xargs -0 shellcheck -e SC1091,SC2034 && bats tests/*.bats"
                 docker run --rm -v "${ProjectRoot}:/project" -w /project archlinux:latest bash -c $dockerCmd
                 if ($LASTEXITCODE -eq 0) { $ran = $true }
             }

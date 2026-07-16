@@ -9,7 +9,6 @@ mesa
 wine
 wine-mono
 wine-gecko
-protonplus
 lutris
 mangohud
 vkd3d

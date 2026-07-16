@@ -74,14 +74,16 @@ deploy_configs() {
   link_file "$DOTFILES_DIR/kitty/kitty.conf" "$HOME/.config/kitty/kitty.conf"
 }
 
-setup_wallpaper_placeholder() {
-  local wp="$HOME/.config/hypr/wallpaper.jpg"
-  if [[ ! -f "$wp" ]]; then
-    log "Création fond d'écran placeholder (remplacez wallpaper.jpg)"
-    if command -v convert &>/dev/null; then
-      convert -size 1920x1080 gradient:'#1e1e2e-#89b4fa' "$wp" 2>/dev/null || true
-    fi
-  fi
+deploy_wlogout() {
+  mkdir -p "$HOME/.config/wlogout"
+  link_file "$DOTFILES_DIR/wlogout/layout" "$HOME/.config/wlogout/layout"
+  link_file "$DOTFILES_DIR/wlogout/style.css" "$HOME/.config/wlogout/style.css"
+}
+
+deploy_shell() {
+  link_file "$DOTFILES_DIR/zsh/.zshrc" "$HOME/.zshrc"
+  mkdir -p "$HOME/.config"
+  link_file "$DOTFILES_DIR/zsh/starship.toml" "$HOME/.config/starship.toml"
 }
 
 main() {
@@ -96,7 +98,8 @@ main() {
   log "=== Déploiement dotfiles Hyprland ==="
   deploy_hyprland
   deploy_configs
-  setup_wallpaper_placeholder
+  deploy_wlogout
+  deploy_shell
   log "=== Déploiement terminé ==="
   log "Redémarrez ou relancez Hyprland pour appliquer"
 }

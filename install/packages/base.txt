@@ -31,3 +31,6 @@ thermald
 intel-ucode
 reflector
 archlinux-keyring
+zram-generator
+snapper
+snap-pac

@@ -12,9 +12,9 @@ check() {
   local result="$2"
   local msg="${3:-}"
   case "$result" in
-    pass) echo "[PASS] $name${msg:+: $msg}"; ((PASS++)) ;;
-    fail) echo "[FAIL] $name${msg:+: $msg}"; ((FAIL++)) ;;
-    warn) echo "[WARN] $name${msg:+: $msg}"; ((WARN++)) ;;
+    pass) echo "[PASS] $name${msg:+: $msg}"; PASS=$((PASS+1)) ;;
+    fail) echo "[FAIL] $name${msg:+: $msg}"; FAIL=$((FAIL+1)) ;;
+    warn) echo "[WARN] $name${msg:+: $msg}"; WARN=$((WARN+1)) ;;
   esac
 }
 

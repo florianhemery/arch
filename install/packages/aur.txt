@@ -1,0 +1,4 @@
+# Paquets AUR — installés en post-install via paru, jamais par pacstrap
+protonplus
+bibata-cursor-theme
+davinci-resolve

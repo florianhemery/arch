@@ -36,6 +36,13 @@ setup() {
   [[ "$output" == *"DRY-RUN"* ]] || [[ "$output" == *"grub"* ]]
 }
 
-@test "install_systemd_boot dry-run succeeds" {
-  skip "Requires mounted btrfs root"
+@test "install.sh rejects systemd-boot" {
+  run bash "$ARCH_PROJECT_ROOT/install/install.sh" \
+    --dry-run \
+    --bootloader systemd-boot \
+    --disk nvme0n1 \
+    --user archuser \
+    --report "$ARCH_PROJECT_ROOT/tests/fixtures/hardware-report.json"
+  [[ $status -eq 1 ]]
+  [[ "$output" == *"systemd-boot non supporté"* ]]
 }

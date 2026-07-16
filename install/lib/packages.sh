@@ -52,3 +52,73 @@ run_pacstrap() {
   fi
   pacstrap -K "$target" "${packages[@]}"
 }
+
+read_aur_package_list() {
+  local file="$PACKAGES_DIR/aur.txt"
+  [[ -f "$file" ]] || { log_error "Liste AUR introuvable: $file"; return 1; }
+  grep -v '^#' "$file" | grep -v '^[[:space:]]*$' || true
+}
+
+refresh_mirrors_live() {
+  if is_dry_run; then
+    log_info "[DRY-RUN] reflector --country France --latest 10 --sort rate"
+    return 0
+  fi
+  if command -v reflector &>/dev/null; then
+    reflector --country France --latest 10 --sort rate --save /etc/pacman.d/mirrorlist
+    log_info "Miroirs pacman rafraîchis via reflector"
+  else
+    log_warn "reflector absent, miroirs par défaut conservés"
+  fi
+}
+
+enable_multilib_chroot() {
+  local target="${1:-/mnt}"
+  if is_dry_run; then
+    log_info "[DRY-RUN] activation multilib dans $target/etc/pacman.conf"
+    return 0
+  fi
+  if grep -q '^\[multilib\]' "$target/etc/pacman.conf"; then
+    log_info "multilib déjà activé"
+    return 0
+  fi
+  sed -i '/^#\[multilib\]/,/^#Include = \/etc\/pacman.d\/mirrorlist/ {
+    s/^#\[multilib\]/[multilib]/
+    s/^#Include = \/etc\/pacman.d\/mirrorlist/Include = \/etc\/pacman.d\/mirrorlist/
+  }' "$target/etc/pacman.conf"
+  log_info "multilib activé dans le système cible"
+}
+
+configure_zram_chroot() {
+  local target="${1:-/mnt}"
+  if is_dry_run; then
+    log_info "[DRY-RUN] zram-generator.conf dans $target/etc/systemd/"
+    return 0
+  fi
+  mkdir -p "$target/etc/systemd"
+  cat > "$target/etc/systemd/zram-generator.conf" <<'EOF'
+[zram0]
+zram-size = ram / 2
+compression-algorithm = zstd
+EOF
+  log_info "zram-generator configuré (50 % RAM)"
+}
+
+validate_official_packages() {
+  local profiles=(base dev gaming office video hyprland)
+  local missing=()
+  local pkg profile
+  for profile in "${profiles[@]}"; do
+    while IFS= read -r pkg; do
+      [[ -n "$pkg" ]] || continue
+      if ! pacman -Sp "$pkg" &>/dev/null; then
+        missing+=("$profile:$pkg")
+      fi
+    done < <(read_package_list "$profile")
+  done
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    printf 'Paquets introuvables dans les dépôts officiels:\n' >&2
+    printf '  %s\n' "${missing[@]}" >&2
+    return 1
+  fi
+}

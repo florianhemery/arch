@@ -5,6 +5,7 @@ setup() {
   export ARCH_PROJECT_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
   export DRY_RUN=1
   export HARDWARE_REPORT="$ARCH_PROJECT_ROOT/tests/fixtures/hardware-report.json"
+  unset MOCK_UNALLOCATED_REGION
   # shellcheck source=../../install/lib/common.sh
   source "$ARCH_PROJECT_ROOT/install/lib/common.sh"
   # shellcheck source=../../install/lib/disk.sh
@@ -14,6 +15,20 @@ setup() {
 @test "calculate_partition_layout returns error without unallocated space" {
   run calculate_partition_layout "nonexistentdisk999" 250
   [[ $status -eq 1 ]]
+}
+
+@test "calculate_partition_layout rejects region smaller than 50 GiB" {
+  export MOCK_UNALLOCATED_REGION="2048:106496"
+  run calculate_partition_layout "mockdisk" 250
+  [[ $status -eq 1 ]]
+  [[ "$output" == *"region_too_small"* ]]
+}
+
+@test "calculate_partition_layout accepts region >= 50 GiB" {
+  export MOCK_UNALLOCATED_REGION="2048:419430400"
+  run calculate_partition_layout "mockdisk" 250
+  [[ $status -eq 0 ]]
+  [[ "$output" == *":"* ]]
 }
 
 @test "bytes_to_gib via common for large values" {

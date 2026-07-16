@@ -1,0 +1,20 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run bash tests in Arch container
+        run: |
+          docker run --rm -v "$PWD:/project" -w /project archlinux:latest bash -c \
+            "pacman -Sy --noconfirm shellcheck bats python jq python-jsonschema && \
+             pacman -Sy --noconfirm && \
+             find install configure dotfiles -name '*.sh' -print0 | xargs -0 shellcheck -e SC1091,SC2034 && \
+             bats tests/*.bats"

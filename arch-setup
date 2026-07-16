@@ -1,0 +1,241 @@
+#!/usr/bin/env bash
+# Utilitaire unifié Arch + Hyprland — ISO live et premier boot
+# Usage: ./arch-setup [live|first-boot|find|help] [options]
+
+set -euo pipefail
+
+ARCH_SETUP_BIN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export ARCH_PROJECT_ROOT="$ARCH_SETUP_BIN"
+
+log()  { echo "[arch-setup] $*"; }
+warn() { echo "[arch-setup] AVERTISSEMENT: $*" >&2; }
+die()  { echo "[arch-setup] ERREUR: $*" >&2; exit 1; }
+
+is_live_iso() {
+  [[ -d /run/archiso ]] || grep -q 'archiso' /proc/cmdline 2>/dev/null
+}
+
+require_root() {
+  [[ "${EUID:-$(id -u)}" -eq 0 ]] || die "Cette commande doit être exécutée en root (sudo -i sur l'ISO Arch)"
+}
+
+find_project_root() {
+  local dir sub mp name fstype
+  if [[ -f "$ARCH_SETUP_BIN/install/install.sh" ]]; then
+    echo "$ARCH_SETUP_BIN"
+    return 0
+  fi
+  for dir in "$ARCH_SETUP_BIN" /mnt/usb/arch /mnt/arch; do
+    [[ -f "$dir/install/install.sh" ]] && { echo "$dir"; return 0; }
+  done
+  while IFS= read -r mp; do
+    for sub in "$mp/arch" "$mp"; do
+      [[ -f "$sub/install/install.sh" ]] && { echo "$sub"; return 0; }
+    done
+  done < <(find /mnt /run/media -maxdepth 3 -type d 2>/dev/null | sort -u)
+  while read -r name fstype _; do
+    [[ "$fstype" =~ ^(vfat|exfat|ntfs)$ ]] || continue
+    [[ -b "/dev/$name" ]] || continue
+    mountpoint -q "/mnt/$name" 2>/dev/null && continue
+    mkdir -p "/mnt/$name"
+    mount -o ro "/dev/$name" "/mnt/$name" 2>/dev/null || mount "/dev/$name" "/mnt/$name" 2>/dev/null || continue
+    for sub in "/mnt/$name/arch" "/mnt/$name"; do
+      if [[ -f "$sub/install/install.sh" ]]; then
+        echo "$sub"
+        return 0
+      fi
+    done
+  done < <(lsblk -rno NAME,FSTYPE,RM 2>/dev/null | awk '$3==1 && $2!=""{print $1,$2,$3}')
+  return 1
+}
+
+ensure_network() {
+  if ping -c1 -W3 archlinux.org &>/dev/null || ping -c1 -W3 1.1.1.1 &>/dev/null; then
+    log "Connexion réseau OK"
+    return 0
+  fi
+  warn "Pas de connexion Internet détectée"
+  if [[ -n "${WIFI_SSID:-}" ]]; then
+    log "Connexion Wi-Fi: $WIFI_SSID"
+    if [[ -n "${WIFI_PASS:-}" ]]; then
+      iwctl --passphrase "$WIFI_PASS" station wlan0 connect "$WIFI_SSID" 2>/dev/null || \
+        iwctl station wlan0 connect "$WIFI_SSID" --passphrase "$WIFI_PASS" 2>/dev/null || \
+        die "Échec connexion Wi-Fi"
+    else
+      iwctl station wlan0 connect "$WIFI_SSID" || die "Échec connexion Wi-Fi"
+    fi
+    sleep 2
+    ping -c1 -W5 archlinux.org &>/dev/null || die "Wi-Fi connecté mais pas d'accès Internet"
+    return 0
+  fi
+  cat <<'EOF'
+
+Connectez-vous au réseau :
+  iwctl
+  device list
+  station wlan0 scan
+  station wlan0 connect "VOTRE_SSID"
+
+Ou exportez avant de lancer :
+  export WIFI_SSID="MonWiFi"
+  export WIFI_PASS="motdepasse"
+
+EOF
+  read -rp "Appuyez sur Entrée une fois connecté au réseau... "
+  ping -c1 -W5 archlinux.org &>/dev/null || warn "Internet toujours inaccessible — pacstrap échouera sans réseau"
+}
+
+preflight_report() {
+  local report="$1"
+  [[ -f "$report" ]] || die "Rapport introuvable: $report"
+  local can_install bl_status
+  can_install=$(python3 -c "import json; d=json.load(open('$report',encoding='utf-8-sig')); print(str(d['install']['canInstall']).lower())" 2>/dev/null || echo "false")
+  bl_status=$(python3 -c "import json; d=json.load(open('$report',encoding='utf-8-sig')); print(d.get('security',{}).get('bitlocker',{}).get('status','Unknown'))" 2>/dev/null || echo "Unknown")
+  [[ "$can_install" == "true" ]] || die "install.canInstall=false dans le rapport — installation refusée"
+  case "$bl_status" in
+    On) die "BitLocker ACTIF — suspendez-le sous Windows avant d'installer" ;;
+    Unknown) warn "Statut BitLocker inconnu — vérifiez sous Windows avant de continuer" ;;
+  esac
+  log "Rapport validé (BitLocker: $bl_status)"
+}
+
+cmd_find() {
+  local root
+  root=$(find_project_root) || die "Projet introuvable — copiez le dossier arch sur une clé USB"
+  log "Projet trouvé: $root"
+  [[ -f "$root/analyze/hardware-report.json" ]] && log "Rapport: $root/analyze/hardware-report.json"
+}
+
+cmd_live() {
+  local root report disk user password root_gib extra_args=() dry=0
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --dry-run) dry=1; extra_args+=(--dry-run); shift ;;
+      --disk) disk="$2"; extra_args+=(--disk "$2"); shift 2 ;;
+      --user) user="$2"; extra_args+=(--user "$2"); shift 2 ;;
+      --password) password="$2"; extra_args+=(--password "$2"); shift 2 ;;
+      --root-gib) root_gib="$2"; extra_args+=(--root-gib "$2"); shift 2 ;;
+      --report) report="$2"; extra_args+=(--report "$2"); shift 2 ;;
+      *) die "Option inconnue: $1" ;;
+    esac
+  done
+
+  [[ "$dry" -eq 1 ]] || require_root
+  is_live_iso || [[ "$dry" -eq 1 ]] || warn "Vous ne semblez pas être sur l'ISO Arch live — continuez avec prudence"
+
+  root=$(find_project_root) || die "Projet introuvable. Montez la clé USB ou copiez le dossier arch."
+  log "Projet: $root"
+
+  report="${REPORT:-${report:-$root/analyze/hardware-report.json}}"
+  [[ -f "$report" ]] || die "hardware-report.json manquant: $report (lancez arch-setup.ps1 prepare sous Windows)"
+
+  preflight_report "$report"
+  [[ "$dry" -eq 1 ]] || ensure_network
+
+  user="${ARCH_USER:-${user:-archuser}}"
+  password="${ARCH_PASSWORD:-${password:-}}"
+  root_gib="${ROOT_GIB:-${root_gib:-}}"
+
+  if [[ -z "$disk" ]]; then
+    disk="${DISK:-}"
+  fi
+  if [[ -z "$disk" ]]; then
+    disk=$(python3 -c "
+import json
+d=json.load(open('$report',encoding='utf-8-sig'))
+n=d.get('install',{}).get('targetDisk',0)
+disks=__import__('subprocess').check_output(['lsblk','-dno','NAME'],text=True).strip().split('\n')
+print(disks[n] if n is not None and n < len(disks) else disks[0])
+" 2>/dev/null || lsblk -dno NAME | head -1)
+    log "Disque auto-détecté: /dev/$disk"
+    extra_args+=(--disk "$disk")
+  fi
+
+  if [[ -z "$password" ]] && [[ "$dry" -eq 0 ]]; then
+    read -rsp "Mot de passe pour $user: " password
+    echo
+    extra_args+=(--password "$password")
+  elif [[ -n "$password" ]]; then
+    extra_args+=(--password "$password")
+  fi
+
+  extra_args+=(--user "$user" --report "$report")
+  [[ -n "$root_gib" ]] && extra_args+=(--root-gib "$root_gib")
+
+  chmod +x "$root/install/install.sh" "$root/configure/"*.sh "$root/dotfiles/deploy.sh" 2>/dev/null || true
+
+  log "=== Lancement install.sh ==="
+  exec "$root/install/install.sh" "${extra_args[@]}"
+}
+
+cmd_first_boot() {
+  local setup_dir="${ARCH_SETUP_DIR:-$HOME/arch-setup}"
+  [[ -d "$setup_dir/configure" ]] || die "Dossier arch-setup introuvable: $setup_dir (installation terminée ?)"
+
+  local report=""
+  for candidate in \
+    "$setup_dir/analyze/hardware-report.json" \
+    "$ARCH_PROJECT_ROOT/analyze/hardware-report.json" \
+    "$HOME/hardware-report.json"; do
+    [[ -f "$candidate" ]] && { report="$candidate"; break; }
+  done
+
+  log "=== Post-installation automatique ==="
+  log "Étape 1/3 — configure/setup.sh (pilotes, AUR, snapper…)"
+  bash "$setup_dir/configure/setup.sh"
+
+  log "Étape 2/3 — dotfiles/deploy.sh"
+  if [[ -n "$report" ]]; then
+    bash "$setup_dir/dotfiles/deploy.sh" --report "$report"
+  else
+    warn "hardware-report.json absent — monitors.conf par défaut"
+    bash "$setup_dir/dotfiles/deploy.sh"
+  fi
+
+  log "Étape 3/3 — verify-dx12.sh"
+  bash "$setup_dir/configure/verify-dx12.sh" || warn "Vérification DX12 incomplète (normal avant Steam/Proton)"
+
+  log "=== Post-installation terminée ==="
+  log "Redémarrez : sudo reboot"
+}
+
+usage() {
+  cat <<EOF
+Arch + Hyprland — utilitaire d'installation
+
+Usage:
+  ./arch-setup live [options]       Depuis l'ISO Arch (root) — installe tout
+  ./arch-setup first-boot           Après reboot sur Arch — configure le système
+  ./arch-setup find                 Localise le projet sur les disques montés
+
+Options live (transmises à install.sh) :
+  --dry-run          Simulation
+  --disk DISK        ex. nvme0n1
+  --user NAME        défaut: archuser
+  --password PASS    sinon demandé interactivement
+  --root-gib N       taille partition GiB
+  --report PATH      hardware-report.json
+
+Variables d'environnement :
+  WIFI_SSID / WIFI_PASS     Connexion Wi-Fi automatique
+  ARCH_USER / ARCH_PASSWORD Identifiants sans prompt
+  DISK / ROOT_GIB / REPORT  Surcharge des valeurs par défaut
+
+Sous Windows, utilisez : .\\arch-setup.ps1 prepare
+EOF
+}
+
+main() {
+  local cmd="${1:-help}"
+  shift || true
+  case "$cmd" in
+    live)       cmd_live "$@" ;;
+    first-boot) cmd_first_boot "$@" ;;
+    find)       cmd_find "$@" ;;
+    help|-h|--help) usage ;;
+    *) die "Commande inconnue: $cmd (essayez: help)" ;;
+  esac
+}
+
+main "$@"

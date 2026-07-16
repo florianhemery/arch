@@ -67,5 +67,18 @@ validate_hardware_report() {
   local version
   version=$(json_get 'schemaVersion' "$file" || echo "")
   [[ "$version" == "1.0.0" ]] || { log_error "schemaVersion invalide: $version"; return 1; }
+  local schema="$ARCH_PROJECT_ROOT/analyze/hardware-report.schema.json"
+  if [[ -f "$schema" ]] && command -v python3 &>/dev/null; then
+    python3 -c "
+import json, sys
+try:
+    import jsonschema
+except ImportError:
+    sys.exit(0)
+schema = json.load(open(sys.argv[1], encoding='utf-8'))
+report = json.load(open(sys.argv[2], encoding='utf-8-sig'))
+jsonschema.validate(report, schema)
+" "$schema" "$file" || { log_error "Rapport non conforme au schéma JSON"; return 1; }
+  fi
   log_info "Rapport matériel validé: $file"
 }

@@ -31,7 +31,8 @@ setup() {
   [[ "$output" == *"Configuration terminée"* ]]
 }
 
-@test "verify-dx12.sh runs (may warn in container)" {
+@test "verify-dx12.sh runs and completes all checks" {
   run bash "$ARCH_PROJECT_ROOT/configure/verify-dx12.sh" || true
   [[ "$output" == *"Vérification"* ]]
+  [[ "$output" == *"Résultat:"* ]]
 }
