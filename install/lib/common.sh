@@ -13,7 +13,14 @@ log() {
   shift
   local msg
   msg="[$(date -Iseconds)] [$level] $*"
-  echo "$msg" | tee -a "$LOG_FILE"
+  # Sur stderr, pas stdout : plusieurs fonctions (partition_disk, ...) sont
+  # capturées via $(...) par leur appelant pour récupérer une valeur de
+  # retour (device, chemin...). Si les logs sortaient sur stdout, ils se
+  # mélangeraient à cette valeur (vu en conditions réelles : un device path
+  # pollué par une ligne de log a fini interprété comme un partage NFS par
+  # `mount`). Toujours visible pour l'utilisateur car les wrappers de haut
+  # niveau (arch-setup) font `2>&1 | tee`.
+  echo "$msg" | tee -a "$LOG_FILE" >&2
 }
 
 log_info() { log INFO "$@"; }

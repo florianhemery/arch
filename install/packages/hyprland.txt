@@ -23,7 +23,6 @@ noto-fonts
 noto-fonts-emoji
 ttf-jetbrains-mono-nerd
 papirus-icon-theme
-wlogout
 nwg-look
 nwg-displays
 brightnessctl

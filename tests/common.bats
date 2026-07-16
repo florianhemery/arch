@@ -2,10 +2,10 @@
 # Tests for install/lib/common.sh
 
 setup() {
-  export ARCH_PROJECT_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
+  export ARCH_PROJECT_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
   export DRY_RUN=1
   export HARDWARE_REPORT="$ARCH_PROJECT_ROOT/tests/fixtures/hardware-report.json"
-  # shellcheck source=../../install/lib/common.sh
+  # shellcheck source=../install/lib/common.sh
   source "$ARCH_PROJECT_ROOT/install/lib/common.sh"
 }
 

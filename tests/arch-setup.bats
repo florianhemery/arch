@@ -2,7 +2,7 @@
 # Tests for arch-setup utility
 
 setup() {
-  export ARCH_PROJECT_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
+  export ARCH_PROJECT_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
 }
 
 @test "arch-setup help exits 0" {

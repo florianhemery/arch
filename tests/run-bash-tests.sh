@@ -78,9 +78,9 @@ assert_eq "json_get targetDisk" "0" "$(json_get install.targetDisk "$HARDWARE_RE
 # packages.sh
 assert_contains "base packages has linux" "linux" "$(read_package_list base)"
 assert_contains "gaming has vulkan-intel" "vulkan-intel" "$(read_package_list gaming)"
-assert_contains "hyprland has wlogout" "wlogout" "$(read_package_list hyprland)"
 assert_contains "hyprland has sddm" "sddm" "$(read_package_list hyprland)"
 assert_contains "aur has protonplus" "protonplus" "$(read_aur_package_list)"
+assert_contains "aur has wlogout" "wlogout" "$(read_aur_package_list)"
 assert_contains "profiles include gaming" "gaming" "$(get_profiles_from_report "$HARDWARE_REPORT")"
 
 # disk.sh — region too small

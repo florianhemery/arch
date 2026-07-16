@@ -121,7 +121,7 @@ main() {
   configure_zram_chroot /mnt
 
   generate_fstab /mnt
-  configure_locale_chroot /mnt "$(json_get 'locale.timezone' "$HARDWARE_REPORT" 2>/dev/null | tr ' ' '_' || echo 'Europe/Paris')" "fr"
+  configure_locale_chroot /mnt "$(json_get 'locale.timezone' "$HARDWARE_REPORT" 2>/dev/null || echo 'Europe/Paris')" "fr"
 
   if [[ -z "${USER_PASSWORD:-}" ]] && ! is_dry_run; then
     read -rsp "Mot de passe pour $DEFAULT_USER: " USER_PASSWORD
@@ -140,7 +140,10 @@ main() {
     cp "$HARDWARE_REPORT" "/mnt/home/$DEFAULT_USER/arch-setup/analyze/hardware-report.json"
     mkdir -p "/mnt/home/$DEFAULT_USER/arch-setup/packages"
     cp -r "$ARCH_PROJECT_ROOT/install/packages/" "/mnt/home/$DEFAULT_USER/arch-setup/packages/"
-    chown -R "$DEFAULT_USER:$DEFAULT_USER" "/mnt/home/$DEFAULT_USER/arch-setup"
+    # chown depuis le live ISO échoue : "$DEFAULT_USER" n'existe que dans
+    # /mnt/etc/passwd (créé par arch-chroot useradd), pas dans la base
+    # utilisateurs du système live qui exécute cette commande.
+    arch-chroot /mnt chown -R "$DEFAULT_USER:$DEFAULT_USER" "/home/$DEFAULT_USER/arch-setup"
   else
     log_info "[DRY-RUN] Copie arch-setup, configure/, dotfiles/, packages/ et hardware-report.json"
   fi

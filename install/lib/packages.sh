@@ -12,7 +12,10 @@ read_package_list() {
   local profile="$1"
   local file="$PACKAGES_DIR/${profile}.txt"
   [[ -f "$file" ]] || { log_error "Liste de paquets introuvable: $file"; return 1; }
-  grep -v '^#' "$file" | grep -v '^[[:space:]]*$' || true
+  # tr -d '\r' : au cas où le fichier a des fins de ligne CRLF (checkout
+  # Windows) — un \r final invisible dans un nom de paquet fait échouer
+  # pacman avec "target not found" pour absolument tout.
+  tr -d '\r' < "$file" | grep -v '^#' | grep -v '^[[:space:]]*$' || true
 }
 
 merge_package_lists() {
@@ -56,12 +59,13 @@ run_pacstrap() {
 read_aur_package_list() {
   local file="$PACKAGES_DIR/aur.txt"
   [[ -f "$file" ]] || { log_error "Liste AUR introuvable: $file"; return 1; }
-  grep -v '^#' "$file" | grep -v '^[[:space:]]*$' || true
+  tr -d '\r' < "$file" | grep -v '^#' | grep -v '^[[:space:]]*$' || true
 }
 
 refresh_mirrors_live() {
   if is_dry_run; then
     log_info "[DRY-RUN] reflector --country France --latest 10 --sort rate"
+    log_info "[DRY-RUN] pacman -Sy"
     return 0
   fi
   if command -v reflector &>/dev/null; then
@@ -70,6 +74,11 @@ refresh_mirrors_live() {
   else
     log_warn "reflector absent, miroirs par défaut conservés"
   fi
+  # L'ISO live ne synchronise jamais les bases de paquets automatiquement
+  # (/var/lib/pacman/sync/ n'existe même pas au premier boot) : sans ce -Sy,
+  # pacstrap échoue avec "target not found" sur absolument tous les paquets.
+  pacman -Sy
+  log_info "Bases de paquets pacman synchronisées"
 }
 
 enable_multilib_chroot() {

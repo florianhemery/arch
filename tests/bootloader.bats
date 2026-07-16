@@ -2,16 +2,16 @@
 # Tests for install/lib/bootloader.sh and users.sh
 
 setup() {
-  export ARCH_PROJECT_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
+  export ARCH_PROJECT_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
   export DRY_RUN=1
   export DEFAULT_USER=testuser
-  # shellcheck source=../../install/lib/common.sh
+  # shellcheck source=../install/lib/common.sh
   source "$ARCH_PROJECT_ROOT/install/lib/common.sh"
-  # shellcheck source=../../install/lib/disk.sh
+  # shellcheck source=../install/lib/disk.sh
   source "$ARCH_PROJECT_ROOT/install/lib/disk.sh"
-  # shellcheck source=../../install/lib/bootloader.sh
+  # shellcheck source=../install/lib/bootloader.sh
   source "$ARCH_PROJECT_ROOT/install/lib/bootloader.sh"
-  # shellcheck source=../../install/lib/users.sh
+  # shellcheck source=../install/lib/users.sh
   source "$ARCH_PROJECT_ROOT/install/lib/users.sh"
 }
 

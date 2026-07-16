@@ -3,4 +3,5 @@
 arch-setup text eol=lf
 *.bash text eol=lf
 *.bats text eol=lf
+*.txt text eol=lf
 *.ps1 text eol=crlf

@@ -2,3 +2,4 @@
 protonplus
 bibata-cursor-theme
 davinci-resolve
+wlogout

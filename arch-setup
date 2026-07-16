@@ -49,8 +49,15 @@ find_project_root() {
   return 1
 }
 
+has_internet() {
+  # ICMP est souvent bloqué (NAT, pare-feu réseau) même quand HTTP/DNS
+  # fonctionnent : on teste une vraie connexion TCP, pas un ping.
+  curl -fsS --max-time 5 -o /dev/null https://archlinux.org 2>/dev/null && return 0
+  (exec 3<>/dev/tcp/1.1.1.1/443) 2>/dev/null && exec 3<&- 3>&-
+}
+
 ensure_network() {
-  if ping -c1 -W3 archlinux.org &>/dev/null || ping -c1 -W3 1.1.1.1 &>/dev/null; then
+  if has_internet; then
     log "Connexion réseau OK"
     return 0
   fi
@@ -65,7 +72,7 @@ ensure_network() {
       iwctl station wlan0 connect "$WIFI_SSID" || die "Échec connexion Wi-Fi"
     fi
     sleep 2
-    ping -c1 -W5 archlinux.org &>/dev/null || die "Wi-Fi connecté mais pas d'accès Internet"
+    has_internet || die "Wi-Fi connecté mais pas d'accès Internet"
     return 0
   fi
   cat <<'EOF'
@@ -82,7 +89,7 @@ Ou exportez avant de lancer :
 
 EOF
   read -rp "Appuyez sur Entrée une fois connecté au réseau... "
-  ping -c1 -W5 archlinux.org &>/dev/null || warn "Internet toujours inaccessible — pacstrap échouera sans réseau"
+  has_internet || warn "Internet toujours inaccessible — pacstrap échouera sans réseau"
 }
 
 preflight_report() {

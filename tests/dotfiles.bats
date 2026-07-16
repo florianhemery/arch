@@ -2,7 +2,7 @@
 # Tests for dotfiles and config validation
 
 setup() {
-  export ARCH_PROJECT_ROOT="$(cd "$BATS_TEST_DIRNAME/../.." && pwd)"
+  export ARCH_PROJECT_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
   export DOTFILES_DIR="$ARCH_PROJECT_ROOT/dotfiles"
 }
 

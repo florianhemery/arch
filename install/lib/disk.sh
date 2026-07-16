@@ -9,6 +9,18 @@ source "$SCRIPT_DIR/common.sh"
 
 MIN_ROOT_GIB=50
 
+# Prend en entrée (stdin) la sortie de `parted -ms ... print free` et imprime
+# "start:end" de la plus grande région libre. Séparé de find_unallocated_region
+# pour être testable avec de vraies sorties parted en fixture, sans disque réel.
+largest_free_region() {
+  awk -F: '/:free;$/ {
+      gsub(/s/,"",$2); gsub(/s/,"",$3);
+      size = $3 - $2;
+      if (size > max) { max = size; best = $2":"$3 }
+    }
+    END { if (best != "") print best }'
+}
+
 find_unallocated_region() {
   local disk="$1"
   if [[ -n "${MOCK_UNALLOCATED_REGION:-}" ]]; then
@@ -19,13 +31,14 @@ find_unallocated_region() {
     echo "2048:419430400"
     return 0
   fi
-  parted -ms "/dev/$disk" unit s print free 2>/dev/null | \
-    awk -F: '/^free/ {
-      gsub(/s/,"",$2); gsub(/s/,"",$3);
-      size = $3 - $2;
-      if (size > max) { max = size; best = $2":"$3 }
-    }
-    END { if (best != "") print best }'
+  parted -ms "/dev/$disk" unit s print free 2>/dev/null | largest_free_region
+}
+
+# Prend en entrée (stdin) la sortie de `lsblk -rno NAME,PARTTYPE,...` et
+# imprime le nom de la partition dont le PARTTYPE est le GUID ESP (lsblk le
+# rapporte en minuscules, contrairement au GUID canonique en majuscules).
+efi_partition_from_lsblk() {
+  awk 'tolower($2)=="c12a7328-f81f-11d2-ba4b-00a0c93ec93b" {print $1; exit}'
 }
 
 find_efi_partition() {
@@ -34,8 +47,7 @@ find_efi_partition() {
     echo "${disk}p1"
     return 0
   fi
-  lsblk -rno NAME,PARTTYPE,SIZE,MOUNTPOINT "/dev/$disk" 2>/dev/null | \
-    awk '$2=="C12A7328-F81F-11D2-BA4B-00A0C93EC93B" {print $1; exit}'
+  lsblk -rno NAME,PARTTYPE,SIZE,MOUNTPOINT "/dev/$disk" 2>/dev/null | efi_partition_from_lsblk
 }
 
 calculate_partition_layout() {
@@ -110,6 +122,14 @@ partition_disk() {
   local part_end="${rest%%:*}"
   local root_bytes="${rest##*:}"
 
+  # Bornes non numériques (échec silencieux de calculate_partition_layout en
+  # amont) : ne jamais laisser ça atteindre parted/mkfs, qui pourraient sinon
+  # cibler une partition existante par accident.
+  [[ "$start" =~ ^[0-9]+$ && "$part_end" =~ ^[0-9]+$ ]] || {
+    log_error "Bornes de partition invalides (start=$start end=$part_end) — abandon"
+    return 1
+  }
+
   log_info "Partitionnement /dev/$disk: start=${start}s end=${part_end}s (~$(bytes_to_gib "$root_bytes") GiB)"
 
   if is_dry_run; then
@@ -118,16 +138,31 @@ partition_disk() {
     return 0
   fi
 
-  parted -s "/dev/$disk" mkpart archroot btrfs "${start}s" "${part_end}s"
-  partprobe "/dev/$disk"
+  local part_count_before
+  part_count_before=$(lsblk -rno NAME "/dev/$disk" | tail -n +2 | wc -l)
+
+  # stdout de ces commandes muselé : partition_disk est capturée via $(...)
+  # par son appelant (part_dev=$(partition_disk ...)) pour récupérer le
+  # device final — toute sortie parasite ici (bannière parted/mkfs, etc.)
+  # se retrouverait mélangée à la valeur de retour.
+  parted -s "/dev/$disk" mkpart archroot btrfs "${start}s" "${part_end}s" >/dev/null
+  partprobe "/dev/$disk" >/dev/null
   sleep 2
+
+  local part_count_after
+  part_count_after=$(lsblk -rno NAME "/dev/$disk" | tail -n +2 | wc -l)
+  (( part_count_after > part_count_before )) || {
+    log_error "Aucune nouvelle partition détectée après mkpart — abandon avant mkfs (une partition existante aurait pu être ciblée par erreur)"
+    return 1
+  }
+
   local part_num
   part_num=$(parted -ms "/dev/$disk" print | tail -1 | cut -d: -f1)
   local part_dev="/dev/${disk}p${part_num}"
   if [[ ! -b "$part_dev" ]]; then
     part_dev="/dev/${disk}${part_num}"
   fi
-  mkfs.btrfs -f -L archroot "$part_dev"
+  mkfs.btrfs -f -L archroot "$part_dev" >/dev/null
   echo "$part_dev"
 }
 

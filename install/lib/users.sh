@@ -28,6 +28,10 @@ configure_locale_chroot() {
 EOF
   sed -i 's/^#fr_FR.UTF-8 UTF-8/fr_FR.UTF-8 UTF-8/' "$target/etc/locale.gen"
   arch-chroot "$target" locale-gen
+  # locale.timezone peut contenir un identifiant Windows (ex. "Romance Standard
+  # Time") plutôt qu'IANA : on retombe sur Europe/Paris s'il n'existe pas dans
+  # zoneinfo, plutôt que de créer un symlink /etc/localtime cassé.
+  arch-chroot "$target" test -f "/usr/share/zoneinfo/$timezone" || timezone="Europe/Paris"
   arch-chroot "$target" ln -sf "/usr/share/zoneinfo/$timezone" /etc/localtime
   arch-chroot "$target" hwclock --systohc
 }
